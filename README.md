@@ -1319,6 +1319,405 @@ A: Yes! Help with documentation, translations, bug reports, or spread the word.
 
 ---
 
+# 🐳 Docker Deployment Guide
+
+This guide will help you deploy LocalMind using Docker for a consistent, portable, and production-ready setup.
+
+---
+
+## 📋 Prerequisites
+
+Before you begin, ensure you have installed:
+
+- **Docker** (v20.10 or higher) - [Install Docker](https://docs.docker.com/get-docker/)
+- **Docker Compose** (v2.0 or higher) - Usually included with Docker Desktop
+
+Verify installation:
+```bash
+docker --version
+docker compose version
+```
+
+---
+
+## 🚀 Quick Start
+
+### Option 1: Using Docker Compose (Recommended)
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/your-username/LocalMind.git
+   cd LocalMind
+   ```
+
+2. **Configure environment variables:**
+   ```bash
+   cp .env.example .env
+   nano .env  # Edit with your preferred editor
+   ```
+   
+   **Required variables to set:**
+   - `LOCALMIND_SECRET` - Generate with: `openssl rand -base64 32`
+   - Add API keys for cloud providers (optional)
+
+3. **Start the application:**
+   ```bash
+   docker compose up -d
+   ```
+
+4. **Access LocalMind:**
+   - Open your browser: http://localhost:3000
+   - The application will serve both backend API and frontend
+
+5. **View logs:**
+   ```bash
+   docker compose logs -f localmind
+   ```
+
+### Option 2: Using Docker CLI
+
+1. **Build the image:**
+   ```bash
+   docker build -t localmind:latest .
+   ```
+
+2. **Run the container:**
+   ```bash
+   docker run -d \
+     --name localmind-app \
+     -p 3000:3000 \
+     -e LOCALMIND_SECRET="your-secret-key" \
+     -e API_KEY="your-api-key" \
+     -e OLLAMA_HOST="http://host.docker.internal:11434" \
+     -v localmind-uploads:/app/uploads \
+     -v localmind-data:/app/data \
+     localmind:latest
+   ```
+
+3. **Access the application:**
+   - http://localhost:3000
+
+---
+
+## ⚙️ Configuration
+
+### Environment Variables
+
+Create a `.env` file in the project root with the following variables:
+
+| Variable | Description | Required | Default |
+|----------|-------------|----------|---------|
+| `NODE_ENV` | Environment mode | No | `production` |
+| `PORT` | Application port | No | `3000` |
+| `LOCALMIND_SECRET` | JWT secret key | **Yes** | - |
+| `API_KEY` | Generic API key | No | - |
+| `OPENAI_API_KEY` | OpenAI API key | No | - |
+| `GEMINI_API_KEY` | Google Gemini key | No | - |
+| `GROQ_API_KEY` | Groq API key | No | - |
+| `OLLAMA_HOST` | Ollama server URL | No | `http://host.docker.internal:11434` |
+
+**Generate a secure secret:**
+```bash
+openssl rand -base64 32
+```
+
+### Connecting to Ollama
+
+**If Ollama runs on your host machine:**
+```env
+OLLAMA_HOST=http://host.docker.internal:11434
+```
+
+**If Ollama runs in Docker (uncomment the ollama service in docker-compose.yml):**
+```env
+OLLAMA_HOST=http://ollama:11434
+```
+
+---
+
+## 📦 Docker Commands Reference
+
+### Building & Running
+
+```bash
+# Build the image
+docker build -t localmind:latest .
+
+# Run container (basic)
+docker run -d -p 3000:3000 --name localmind-app localmind:latest
+
+# Run with environment variables
+docker run -d -p 3000:3000 \
+  --env-file .env \
+  --name localmind-app \
+  localmind:latest
+
+# Run with volumes (persist data)
+docker run -d -p 3000:3000 \
+  -v localmind-uploads:/app/uploads \
+  -v localmind-data:/app/data \
+  --name localmind-app \
+  localmind:latest
+```
+
+### Managing Containers
+
+```bash
+# Start container
+docker start localmind-app
+
+# Stop container
+docker stop localmind-app
+
+# Restart container
+docker restart localmind-app
+
+# View logs
+docker logs localmind-app
+docker logs -f localmind-app  # Follow logs
+
+# Check container status
+docker ps -a
+
+# Execute commands in running container
+docker exec -it localmind-app sh
+```
+
+### Docker Compose Commands
+
+```bash
+# Start services
+docker compose up -d
+
+# Stop services
+docker compose down
+
+# Stop and remove volumes (⚠️ deletes data)
+docker compose down -v
+
+# View logs
+docker compose logs -f
+
+# Rebuild and restart
+docker compose up -d --build
+
+# Scale services (if needed)
+docker compose up -d --scale localmind=3
+```
+
+### Cleanup
+
+```bash
+# Remove container
+docker rm -f localmind-app
+
+# Remove image
+docker rmi localmind:latest
+
+# Remove volumes (⚠️ permanent data loss)
+docker volume rm localmind-uploads localmind-data
+
+# Clean up all unused resources
+docker system prune -a --volumes
+```
+
+---
+
+## 🔍 Troubleshooting
+
+### Container won't start
+
+**Check logs:**
+```bash
+docker logs localmind-app
+```
+
+**Common issues:**
+- Missing required environment variables
+- Port 3000 already in use
+- Insufficient permissions
+
+### Port already in use
+
+```bash
+# Find process using port 3000
+lsof -i :3000  # macOS/Linux
+netstat -ano | findstr :3000  # Windows
+
+# Change port in docker-compose.yml
+ports:
+  - "8080:3000"  # Access via localhost:8080
+```
+
+### Can't connect to Ollama
+
+1. **Verify Ollama is running:**
+   ```bash
+   curl http://localhost:11434/api/version
+   ```
+
+2. **Check Docker network:**
+   ```bash
+   docker network inspect localmind-network
+   ```
+
+3. **Use correct host:**
+   - Host machine: `http://host.docker.internal:11434`
+   - Docker container: `http://ollama:11434`
+
+### Permission denied errors
+
+```bash
+# Fix volume permissions
+docker exec -it localmind-app chown -R localmind:localmind /app/uploads /app/data
+```
+
+### Out of memory
+
+**Increase Docker resources:**
+- Docker Desktop → Settings → Resources → Memory (increase to 4GB+)
+
+**Or limit container memory:**
+```bash
+docker run -d -p 3000:3000 \
+  --memory="2g" \
+  --name localmind-app \
+  localmind:latest
+```
+
+---
+
+## 🔒 Security Best Practices
+
+1. **Never commit `.env` files:**
+   ```bash
+   # Ensure .env is in .gitignore
+   echo ".env" >> .gitignore
+   ```
+
+2. **Use strong secrets:**
+   ```bash
+   # Generate secure random secret
+   openssl rand -base64 32
+   ```
+
+3. **Run as non-root user:**
+   - The Dockerfile already implements this
+   - User `localmind` (UID 1001) is used
+
+4. **Keep images updated:**
+   ```bash
+   docker pull node:20-alpine
+   docker compose build --no-cache
+   ```
+
+5. **Scan for vulnerabilities:**
+   ```bash
+   docker scan localmind:latest
+   ```
+
+---
+
+## 🚢 Production Deployment
+
+### Using Docker Compose (Production)
+
+1. **Create production docker-compose:**
+   ```bash
+   cp docker-compose.yml docker-compose.prod.yml
+   ```
+
+2. **Update production settings:**
+   ```yaml
+   environment:
+     - NODE_ENV=production
+     - LOG_LEVEL=error
+   ```
+
+3. **Deploy:**
+   ```bash
+   docker compose -f docker-compose.prod.yml up -d
+   ```
+
+### Behind a Reverse Proxy (Nginx/Traefik)
+
+**Example Nginx configuration:**
+```nginx
+server {
+    listen 80;
+    server_name yourdomain.com;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
+
+---
+
+## 📊 Health Checks
+
+The container includes a health check endpoint:
+
+```bash
+# Check container health
+docker inspect --format='{{.State.Health.Status}}' localmind-app
+
+# Manual health check
+curl http://localhost:3000/health
+```
+
+---
+
+## 🎯 Performance Optimization
+
+### Multi-stage Build Benefits
+
+The Dockerfile uses multi-stage builds to:
+- Reduce final image size by ~60%
+- Separate build and runtime dependencies
+- Improve build caching
+
+### Image Size Comparison
+
+- **Without optimization:** ~800MB
+- **With multi-stage build:** ~300MB
+
+### Build with BuildKit (faster builds)
+
+```bash
+DOCKER_BUILDKIT=1 docker build -t localmind:latest .
+```
+
+---
+
+## 🆘 Getting Help
+
+If you encounter issues:
+
+1. **Check logs:** `docker logs localmind-app`
+2. **Verify environment:** `docker exec localmind-app env`
+3. **Open an issue:** [GitHub Issues](https://github.com/your-username/LocalMind/issues)
+4. **Community support:** [Discord/Forum link]
+
+---
+
+## 📝 Additional Resources
+
+- [Docker Documentation](https://docs.docker.com/)
+- [Docker Compose Reference](https://docs.docker.com/compose/compose-file/)
+- [Best Practices for Dockerfiles](https://docs.docker.com/develop/dev-best-practices/)
+- [Ollama Docker Setup](https://ollama.ai/docs/docker)
+
+---
+
+**🎉 You're all set! Your LocalMind instance is now running in Docker.**
+
 ## 📝 Changelog
 
 ### [v1.0.0] - 2024-01-15
