@@ -1,19 +1,32 @@
+// Image assets used for background and decorative visuals
 import tubeImg from '../../../../../assets/tubeImg.png'
 import blobImg from '../../../../../assets/blobImg.png'
 import waveImg from '../../../../../assets/waveImg.png'
 import dotShadowImg from '../../../../../assets/dotShadowImg.png'
 import globeImg from '../../../../../assets/globeImg.png'
 import linesImg from '../../../../../assets/linesImg.png'
+
+// Reusable Card component for feature display
 import Card from '../../../../../shared/component/v1/Card'
+
+// Type definition for card props to ensure type safety
 import type { CardProps } from '../../../../../types/Interfaces'
+
+// GSAP animation library and plugins
 import gsap from 'gsap'
 import { ScrollTrigger, SplitText } from 'gsap/all'
+
+// React hook provided by GSAP for animation lifecycle handling
 import { useGSAP } from '@gsap/react'
 
+// Register required GSAP plugins
 gsap.registerPlugin(ScrollTrigger, SplitText)
 
 const HomePage: React.FC = () => {
-  // Typed array of feature objects
+   /**
+   * Feature list displayed on the homepage
+   * Typed with CardProps for consistency and type safety
+   */
   const features: CardProps[] = [
     {
       title: 'Custom Models',
@@ -32,7 +45,12 @@ const HomePage: React.FC = () => {
       desc: 'Ultra-low latency sockets and secure REST APIs.',
     },
   ]
-
+  
+    /**
+   * GSAP animation:
+   * - Splits paragraph text into words
+   * - Animates words on scroll using ScrollTrigger
+   */
   useGSAP(() => {
     const split = new SplitText('.about-para', {
       type: 'words',
@@ -53,6 +71,7 @@ const HomePage: React.FC = () => {
   }, [])
 
   return (
+     // Root container for homepage
     <div className="relative min-h-screen w-full bg-[#1E1E1E] text-white overflow-hidden">
       <div className="w-full h-screen relative">
         <img
